@@ -10,3 +10,4 @@ wheels/
 .venv
 # Environment variables
 .env
+test.db
