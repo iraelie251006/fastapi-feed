@@ -1,5 +1,5 @@
-from fastapi import FastAPI
-from .db import Post, create_db_and_tables, create_async_engine
+from fastapi import FastAPI, HTTPException, Form, UploadFile, Depends, File
+from .db import Post, create_db_and_tables, get_async_session
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,15 +10,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.get("/goal")
-def greeting():
-    return {
-        "name": "Elie",
-        "goal": "I'm coming for you all"
-    }
+@app.post("/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    caption: str = Form(""),
+    session: AsyncSession = Depends(get_async_session)
+):
+    post = Post(
+        caption=caption,
+        url="dummy url",
+        file_type="photo",
+        file_name="dummy name"
+    )
 
-@app.get("/")
-def greeting():
-    return {
-        "name": "Elie",
-    }
+    session.add(post)
+    await session.commit()
+    await session.refresh(post)
