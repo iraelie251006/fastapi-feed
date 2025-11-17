@@ -84,3 +84,7 @@ async def get_feed(session: AsyncSession = Depends(get_async_session)):
             }
         )
     return {"posts": posts_data}
+
+@app.delete("/posts/{post_id}")
+async def delete_post(post_id: int):
+    pass
