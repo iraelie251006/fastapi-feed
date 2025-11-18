@@ -86,6 +86,18 @@ async def get_feed(session: AsyncSession = Depends(get_async_session)):
         )
     return {"posts": posts_data}
 
+@app.delete("/posts/all")
+async def delete_all_posts(session: AsyncSession = Depends(get_async_session)):
+    try:
+        result = await session.execute(select(Post))
+
+        posts = result.scalars().fetchall()
+
+        for post in posts:
+            await session.delete(post)
+        await session.commit()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/posts/{post_id}")
 async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session)):
