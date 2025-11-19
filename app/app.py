@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Form, UploadFile, Depends, File
-from .db import Post, create_db_and_tables, get_async_session
+from .db import Post, User, create_db_and_tables, get_async_session
 from contextlib import asynccontextmanager
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -9,7 +9,8 @@ import shutil
 import uuid
 import os
 import tempfile
-
+from app.users import auth_backend, current_active_user, fastapi_users
+from app.schemas import UserCreate, UserRead, UserUpdate
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -19,10 +20,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+app.include_router(fastapi_users.get_auth_router(auth_backend), prefix="/auth/jwt", tags=["auth"])
+app.include_router(fastapi_users.get_register_router(UserCreate, UserRead), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_verify_router(UserRead), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_reset_password_router(), prefix="/auth", tags=["auth"])
+app.include_router(fastapi_users.get_users_router(UserRead, UserUpdate), prefix="/users", tags=["users"])
 
 @app.post("/upload")
 async def upload_file(
     file: UploadFile = File(),
+    user: User = Depends(current_active_user),
     caption: str = Form(""),
     session: AsyncSession = Depends(get_async_session),
 ):
@@ -67,7 +74,7 @@ async def upload_file(
 
 
 @app.get("/feed")
-async def get_feed(session: AsyncSession = Depends(get_async_session)):
+async def get_feed(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user),):
     result = await session.execute(select(Post).order_by(Post.created_at.desc()))
     posts = [post[0] for post in result.all()]
 
@@ -87,7 +94,7 @@ async def get_feed(session: AsyncSession = Depends(get_async_session)):
     return {"posts": posts_data}
 
 @app.delete("/posts/all")
-async def delete_all_posts(session: AsyncSession = Depends(get_async_session)):
+async def delete_all_posts(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user),):
     try:
         result = await session.execute(select(Post))
 
@@ -100,7 +107,7 @@ async def delete_all_posts(session: AsyncSession = Depends(get_async_session)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/posts/{post_id}")
-async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session)):
+async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user),):
     try:
         post_uuid = uuid.UUID(post_id)
 
