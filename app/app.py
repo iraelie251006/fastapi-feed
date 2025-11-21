@@ -75,7 +75,7 @@ async def upload_file(
 
 
 @app.get("/feed")
-async def get_feed(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user),):
+async def get_feed(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_active_user)):
     result = await session.execute(select(Post).order_by(Post.created_at.desc()))
     posts = [post[0] for post in result.all()]
 
