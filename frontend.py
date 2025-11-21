@@ -161,7 +161,7 @@ if st.session_state.user is None:
     login_page()
 else:
     # Sidebar navigation
-    st.sidebar.title(f"👋 Hi {st.session_state.user['email']}!")
+    st.sidebar.title(f"👋 Hi {st.session_state.user['email'].split("@")[0]}!")
 
     if st.sidebar.button("Logout"):
         st.session_state.user = None
