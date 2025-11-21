@@ -52,6 +52,7 @@ async def upload_file(
 
         if upload_result.response_metadata.http_status_code == 200:
             post = Post(
+                user_id=user.id,
                 caption=caption,
                 url=upload_result.url,
                 file_type="video"
@@ -78,17 +79,24 @@ async def get_feed(session: AsyncSession = Depends(get_async_session), user: Use
     result = await session.execute(select(Post).order_by(Post.created_at.desc()))
     posts = [post[0] for post in result.all()]
 
+    result = await session.execute(select(User))
+    users = [row[0] for row in result.all()]
+    user_Dict = {u.id: u.email for u in users}
+
     posts_data = []
 
     for post in posts:
         posts_data.append(
             {
                 "id": str(post.id),
+                "user_id": str(post.user_id),
                 "caption": post.caption,
                 "url": post.url,
                 "file_type": post.file_type,
                 "file_name": post.file_name,
                 "created_at": post.created_at.isoformat(),
+                "is_owner": post.user_id == user.id,
+                "email": user_Dict.get(post.user_id, "Unknown")
             }
         )
     return {"posts": posts_data}
@@ -117,6 +125,8 @@ async def delete_post(post_id: str, session: AsyncSession = Depends(get_async_se
         if not post:
             raise HTTPException(status_code=404, detail="Post not found")
 
+        if post.user_id == user.id:
+            raise HTTPException(status_code=403, detail="You don't have permission to delete this file")
         await session.delete(post)
         await session.commit()
 
